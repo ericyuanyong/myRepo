@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>MyFirstApp</title>
+        <script type="text/javascript" src="http://cdn.jsdelivr.net/particle-api-js/5/particle.min.js"></script>
+        <style>
+            button#button1{color:black;padding:5px}
+            button#button1:hover{background-color: blue}
+            button#button1:active{background-color: antiquewhite}
+            button#button2{color:black;padding:5px}
+            button#button3{color:black;padding:5px}
+
+            legend{text-align:center}
+
+            fieldset{border: block}
+
+            img#buttonPanelImage{width:100px; height:100px;float:right;}
+        </style>
+    </head>
+    <body>
+
+        <!---------------------For the Button Coltorl Panel------->
+        <div>
+            <br>
+            <fieldset>
+                <legend>Button Control Panel</legend>
+            <!--<button id="button1" onclick="function_fan()" onmouseover="style.backgroundColor='blue'"
+                onmouseout="style.backgroundColor='grey'" onmousedown="style.backgroundColor='green'" >Turn ON Fan</button> <br> -->
+            <img id="buttonPanelImage"  src="fanOff.gif">
+        <!-- <img id="fanImage" src="fanOff.gif" style="wdith:50px;height:90px;float:right"> -->
+        <!--<img id="myImage"  src="LampOff.gif" width="50" height=90 float:right>   -->
+            <button id="button1" onclick="function_fan()" >Turn ON Fan</button> <br>
+            <button id="button2" onclick="function_lamp()">Turn ON Lamp</button> <br>
+            <button id="button3" onclick="function_pump()">Turn ON Pump</button><br>
+
+            </fieldset>
+        </div>
+
+        <!--------------For the Value Tune Panel------------------->
+        <div>
+            <fieldset>
+                <legend>Adjust Panel</legend>
+                <p id="tuneTitle">Set Fan Speed</p>    <!--Why the layout will change if i didnot use <p> -->
+                <input id="Range" type="range" style="width:200px;height:30px" min="0" max="10" value="5" onclick="Function_Adjust()">  <!--set the default value as 5-->
+            </fieldset>
+        </div>
+
+        <!--For read out value-->
+        <div>
+            <fieldset>
+                <legend>Sensor</legend>
+                <p id="Temp">Temperature:</p>
+                <p id="Humidity">Humidity:</p>
+                <p id="PM2.5">PM2.5:</p>
+                <p id="Time">Time:</p>
+            </fieldset>
+        </div>
+
+        <p id="debug"></p>          <!--THIS syntax is just for debug---------->
+
+        <!-----------------Java script section-------------------->
+        <script>
+
+            var image=document.getElementById("buttonPanelImage");  //define the image for the button panel image
+
+            var FanStatus = 0,
+                LampStatus = 0,
+                PumpStatus = 0,
+                DeviceId = "xxxx",
+                token="xxxxx";
+
+
+            var particle = new Particle();
+
+            particle.login({username: 'xxxxx', password: 'xxxxx'}).then(
+              function(data){
+                console.log('API call completed on promise resolve: ', data.body.access_token);
+                token = data.body.access_token;
+              },
+              function(err) {
+                console.log('API call completed on promise fail: ', err);
+              }
+            );
+
+            function function_cloud(FunctionName, FunctionVar){
+              var fnPr = particle.callFunction({ deviceId: DeviceId, name: FunctionName, argument: FunctionVar, auth: token });
+
+              fnPr.then(
+                function(data) {
+                  console.log('Function called succesfully:', data);
+                },
+                function(err) {
+                  console.log('An error occurred:', err);
+                }
+              );
+
+            }
+
+            var tune_fan  =5;
+            var tune_pump = 5;
+            var tune_lamp = 5;
+            var tune_current = 0;       //define the current tune status-->the last time that the user pused the turn on button
+
+            //Get test event for specific device
+            particle.getEventStream({ deviceId:DeviceId, name: 'temp', auth:token  }).then(function(stream) {
+              stream.on('event', function(data) {
+                console.log("Event: ", data);
+                var ParseData=JSON.parse(data.data);
+                console.log("temperature: " + ParseData.t + " degrees C, Humidity: " + ParseData.h + "%");
+                document.getElementById("Temp").innerHTML="Temperature: "+ParseData.t+"C";
+                document.getElementById("Humidity").innerHTML="Humidity: "+ParseData.h+"%";
+                document.getElementById("PM2.5").innerHTML="PM2.5: "+ParseData.p +"mg/m3";
+              });
+            });
+            /**********************************************************************************/
+            function function_fan()
+            {
+                var x=0;
+                var State;
+                x=document.getElementById("button1").innerHTML;
+                x=(x=="Turn OFF Fan")? "Turn ON Fan":"Turn OFF Fan";
+                document.getElementById("button1").innerHTML=x;
+                if(x=="Turn OFF Fan")
+                {
+                    image.src="FanOn.gif";
+                    document.getElementById("tuneTitle").innerHTML="Set Fan Speed";
+                    //document.getElementById("Range").value = tune_fan;
+                    State="FanON";
+                    tune_current=State;     //which means the last time the user pused the turn on button is turn Fan on
+                }
+
+                else
+                if(x=="Turn ON Fan")
+                {
+                    image.src="FanOff.gif";
+                    State="FanOFF";
+                }
+                function_cloud("handlepara",State);
+                document.getElementById("Range").value = tune_fan;
+            }
+            function function_lamp()
+            {
+                var x=0;
+                var State;
+                x=document.getElementById("button2").innerHTML;
+                x=(x=="Turn OFF Lamp")? "Turn ON Lamp":"Turn OFF Lamp";
+                document.getElementById("button2").innerHTML=x;
+                if(x=="Turn OFF Lamp")
+                {
+                    image.src="LampOn.gif";
+                    document.getElementById("tuneTitle").innerHTML="Set Lamp brightness";
+                    //document.getElementById("Range").value = tune_lamp;
+                    State="LampON";
+                    tune_current=State;
+                }
+
+                else
+                if(x=="Turn ON Lamp")
+                {
+                    image.src="LampOff.gif";
+                    State="LampOFF";
+                }
+                function_cloud("handlepara",State);
+                document.getElementById("Range").value = tune_lamp;
+            }
+            function function_pump()
+            {
+                var x=0;
+                var State;
+                x=document.getElementById("button3").innerHTML;
+                x=(x=="Turn OFF Pump")? "Turn ON Pump":"Turn OFF Pump";
+                document.getElementById("button3").innerHTML=x;
+                if(x=="Turn OFF Pump")
+                {
+                    image.src="PumpOn.gif";
+                    document.getElementById("tuneTitle").innerHTML="Set Pump Volume";
+                 //   document.getElementById("Range").value = tune_pump;
+                    State="PumpON";
+                    tune_current=State;
+                }
+                else
+                if(x=="Turn ON Pump")
+                {
+                    image.src="PumpOff.gif";
+                    State="PumpOFF";
+                }
+                function_cloud("handlepara",State);
+                document.getElementById("Range").value = tune_pump;
+            }
+            function Function_Adjust()
+            {
+                var x;
+                if(tune_current=="FanON")
+                    tune_fan = document.getElementById("Range").value;
+                else
+                if(tune_current=="LampON")
+                    tune_lamp = document.getElementById("Range").value;
+                else
+                if(tune_current=="PumpON")
+                    tune_pump = document.getElementById("Range").value;
+
+                x=document.getElementById("Range").value;
+                document.getElementById("debug").innerHTML=x;
+                function_cloud("handlepara",x);
+
+            }
+
+            (function(){
+                function checkTime(i)
+                {
+                    return (i<10)?"0"+i:i;
+                }
+
+                function function_time()
+                {
+                    var Time = new Date();
+                    var h=checkTime(Time.getHours());
+                    var m=checkTime(Time.getMinutes());
+                    var s=checkTime(Time.getSeconds());
+                  //  var temp=document.getElementById(Time).innerHTML;
+                    document.getElementById("Time").innerHTML="Time:"+h+":"+m+":"+s;
+                    setTimeout(function(){function_time()},500);
+                }
+                function_time();
+            })();
+
+        </script>
+    </body>
+</html>
